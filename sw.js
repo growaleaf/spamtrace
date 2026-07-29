@@ -1,7 +1,7 @@
 /* Spamtrace service worker — offline-first for a tool people need when
    they're standing in a parking lot with a bad text and one bar of signal. */
-const CACHE = "spamtrace-v2";
-const ASSETS = ["./","./index.html","./app.js","./ui.js","./brokers.js",
+const CACHE = "spamtrace-v3";
+const ASSETS = ["./","./index.html","./app.js?v=3","./ui.js?v=3","./brokers.js?v=3",
                 "./manifest.webmanifest","./icon-192.png","./icon-512.png"];
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)).then(() => self.skipWaiting()));

@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Spamtrace — where did they get my number?</title>
+<meta name="description" content="Paste a spam text. Find out which records leaked your number, why it has a stranger's name on it, and exactly how to cut it off. Runs entirely on your device.">
+<meta name="theme-color" content="#0b0e13">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔎</text></svg>">
+<style>
+:root{
+  --bg:#0b0e13; --panel:#141922; --panel2:#1b212c; --line:#28303d;
+  --ink:#e8edf5; --dim:#93a0b4; --dimmer:#6b7688;
+  --accent:#5eead4; --accent2:#38bdf8;
+  --danger:#f87171; --warn:#fbbf24; --ok:#4ade80;
+  --radius:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--bg); color:var(--ink);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  padding:0 0 80px; overflow-x:hidden;
+}
+.wrap{max-width:820px;margin:0 auto;padding:0 18px}
+header{padding:44px 0 10px;text-align:center}
+.logo{font-size:30px;font-weight:800;letter-spacing:-.02em}
+.logo .a{color:var(--accent)}
+.tag{color:var(--dim);margin-top:8px;font-size:16px}
+.privacy{
+  display:inline-flex;align-items:center;gap:7px;margin-top:16px;
+  background:rgba(94,234,212,.08);border:1px solid rgba(94,234,212,.25);
+  color:var(--accent);border-radius:999px;padding:6px 14px;font-size:13px;font-weight:600;
+}
+/* input */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px;margin-top:22px}
+label{display:block;font-weight:700;font-size:14px;margin-bottom:8px}
+.hint{color:var(--dimmer);font-size:13px;font-weight:400;margin-bottom:10px}
+textarea{
+  width:100%;min-height:130px;resize:vertical;background:var(--bg);color:var(--ink);
+  border:1px solid var(--line);border-radius:10px;padding:13px;font:15px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+textarea:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;align-items:flex-end}
+.field{flex:1;min-width:170px}
+select{
+  width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);
+  border-radius:10px;padding:11px;font-size:15px;
+}
+button.go{
+  background:linear-gradient(135deg,var(--accent),var(--accent2));color:#04211d;border:0;
+  border-radius:10px;padding:13px 26px;font-size:16px;font-weight:800;cursor:pointer;white-space:nowrap;
+}
+button.go:active{transform:translateY(1px)}
+.samples{margin-top:12px;font-size:13px;color:var(--dimmer)}
+.samples b{color:var(--dim);font-weight:600}
+.samp{
+  display:inline-block;margin:5px 6px 0 0;padding:5px 11px;background:var(--panel2);
+  border:1px solid var(--line);border-radius:999px;color:var(--dim);cursor:pointer;font-size:12.5px;
+}
+.samp:hover{border-color:var(--accent);color:var(--accent)}
+/* results */
+#out{margin-top:26px}
+.sec{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.sec h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer);margin-bottom:14px;font-weight:700}
+.verdict{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap}
+.vtext{flex:1;min-width:210px}
+.vtitle{font-size:23px;font-weight:800;line-height:1.25}
+.vsub{color:var(--dim);margin-top:6px;font-size:14.5px}
+.conf{font-size:12px;color:var(--dimmer);margin-top:10px}
+.badge{padding:5px 12px;border-radius:999px;font-size:12px;font-weight:800;letter-spacing:.06em;white-space:nowrap}
+.b-scam{background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.4)}
+.b-comm{background:rgba(251,191,36,.13);color:var(--warn);border:1px solid rgba(251,191,36,.35)}
+/* triage */
+.triage{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:4px}
+.tr{display:flex;gap:13px;padding:15px;border-bottom:1px solid var(--line);align-items:flex-start}
+.tr:last-child{border-bottom:0}
+.tr .ic{font-size:19px;line-height:1.3;flex-shrink:0;width:24px;text-align:center}
+.tr.do{background:rgba(74,222,128,.06)}
+.tr.dont{background:rgba(248,113,113,.06)}
+.tr .k{font-weight:800;font-size:14px;letter-spacing:.03em}
+.tr.do .k{color:var(--ok)} .tr.dont .k{color:var(--danger)}
+.tr .v{color:var(--dim);font-size:14.5px;margin-top:3px}
+.tr .v b{color:var(--ink)}
+/* chain */
+.chain{position:relative;padding-left:26px}
+.chain:before{content:"";position:absolute;left:7px;top:8px;bottom:16px;width:2px;background:linear-gradient(var(--accent),transparent)}
+.stage{position:relative;padding-bottom:20px}
+.stage:before{content:"";position:absolute;left:-24px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px rgba(94,234,212,.16)}
+.stage .st{font-weight:700;font-size:15px}
+.stage .sd{color:var(--dim);font-size:14.5px;margin-top:3px}
+.vendors{margin-top:7px;display:flex;flex-wrap:wrap;gap:6px}
+.vend{background:var(--panel2);border:1px solid var(--line);border-radius:6px;padding:3px 9px;font-size:12px;color:var(--dim);font-family:ui-monospace,Menlo,monospace}
+/* extracted */
+.kv{display:grid;grid-template-columns:auto 1fr;gap:9px 15px;font-size:14.5px}
+.kv dt{color:var(--dimmer);white-space:nowrap}
+.kv dd{color:var(--ink);word-break:break-word}
+.flag{background:rgba(248,113,113,.1);border-left:3px solid var(--danger);padding:11px 13px;border-radius:0 8px 8px 0;margin-top:14px;font-size:14.5px}
+.flag b{color:var(--danger)}
+.note{background:rgba(56,189,248,.08);border-left:3px solid var(--accent2);padding:11px 13px;border-radius:0 8px 8px 0;margin-top:14px;font-size:14.5px}
+.note b{color:var(--accent2)}
+/* actions */
+ol.acts{list-style:none;counter-reset:s}
+ol.acts li{counter-increment:s;position:relative;padding:0 0 18px 42px;border-left:1px dashed var(--line);margin-left:13px}
+ol.acts li:last-child{border-left:0;padding-bottom:0}
+ol.acts li:before{
+  content:counter(s);position:absolute;left:-13px;top:0;width:26px;height:26px;border-radius:50%;
+  background:var(--panel2);border:1px solid var(--line);color:var(--accent);
+  font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;
+}
+.acts .at{font-weight:700;font-size:15.5px}
+.acts .ad{color:var(--dim);font-size:14.5px;margin-top:4px}
+a.btn{
+  display:inline-block;margin-top:9px;background:var(--panel2);border:1px solid var(--line);
+  color:var(--accent);text-decoration:none;padding:8px 14px;border-radius:8px;font-size:13.5px;font-weight:600;
+}
+a.btn:hover{border-color:var(--accent);background:rgba(94,234,212,.08)}
+.pri{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.09em;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:2px}
+.p1{background:rgba(94,234,212,.16);color:var(--accent)}
+.p2{background:rgba(147,160,180,.14);color:var(--dim)}
+/* brokers */
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{text-align:left;color:var(--dimmer);font-size:11px;letter-spacing:.09em;text-transform:uppercase;padding:0 8px 9px 0;font-weight:700}
+td{padding:9px 8px 9px 0;border-top:1px solid var(--line);vertical-align:top}
+td a{color:var(--accent);text-decoration:none} td a:hover{text-decoration:underline}
+.deny{font-family:ui-monospace,Menlo,monospace;font-weight:700}
+.d-hi{color:var(--danger)} .d-mid{color:var(--warn)} .d-lo{color:var(--dim)}
+.scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+/* complaint */
+.copybox{position:relative}
+pre.complaint{
+  background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px;
+  white-space:pre-wrap;word-break:break-word;font:13px/1.6 ui-monospace,Menlo,monospace;color:var(--dim);max-height:340px;overflow:auto;
+}
+button.copy{
+  background:var(--panel2);border:1px solid var(--line);color:var(--accent);
+  border-radius:8px;padding:8px 15px;font-size:13.5px;font-weight:700;cursor:pointer;margin-top:10px;
+}
+button.copy:hover{border-color:var(--accent)}
+footer{color:var(--dimmer);font-size:12.5px;text-align:center;margin-top:34px;line-height:1.75}
+footer a{color:var(--dim)}
+.disc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px;margin-top:20px;font-size:12.5px;color:var(--dimmer);line-height:1.65}
+@media(max-width:560px){
+  header{padding-top:30px}.logo{font-size:25px}.vtitle{font-size:20px}
+  .sec{padding:16px}.wrap{padding:0 14px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo">Spam<span class="a">trace</span></div>
+  <div class="tag">Paste a spam text. Find out how they got your number — and how to shut it off.</div>
+  <div class="privacy">🔒 Runs entirely on your device. Nothing is uploaded.</div>
+</header>
+
+<div class="card">
+  <label for="msg">The text message</label>
+  <div class="hint">Paste it exactly as received, including any "Reply STOP" line and the sign-off.</div>
+  <textarea id="msg" placeholder="Hey Susan, Would you be open to letting go of 14 Roselle Ave? Lets connect&#10;Reply HALT to End&#10;Thanks,RRE"></textarea>
+  <div class="row">
+    <div class="field">
+      <label for="st" style="font-size:13px">Your state <span style="color:var(--dimmer);font-weight:400">(changes your legal options)</span></label>
+      <select id="st">
+        <option value="">— Select —</option>
+      </select>
+    </div>
+    <div class="field" style="flex:0 0 auto">
+      <label for="notme" style="font-size:13px">Is the name yours?</label>
+      <select id="notme">
+        <option value="auto">Not sure / no name</option>
+        <option value="no">No — wrong person</option>
+        <option value="yes">Yes, that's me</option>
+      </select>
+    </div>
+    <button class="go" id="go">Trace it →</button>
+  </div>
+  <div class="samples">
+    <b>Try one:</b><br>
+    <span class="samp" data-s="re">Real-estate "cash offer"</span>
+    <span class="samp" data-s="toll">Unpaid toll</span>
+    <span class="samp" data-s="pig">"Wrong number" opener</span>
+    <span class="samp" data-s="debt">Debt collection</span>
+    <span class="samp" data-s="pkg">Package delivery</span>
+  </div>
+</div>
+
+<div id="out"></div>
+
+<div class="disc">
+  <b style="color:var(--dim)">What this is and isn't.</b> Spamtrace explains how the data-broker supply chain most
+  likely produced the message you received, and points you at the real, verified places to shut it off. The supply-chain
+  attribution is a reasoned inference from the message's fingerprints — not a claim to know which specific company sold
+  your number. Every link here was fetched and confirmed working on 2026-07-29. This is general information, not legal
+  advice; for a lawsuit, talk to a consumer-protection attorney.
+</div>
+
+<footer>
+  Built on primary sources: the <a href="https://cppa.ca.gov/data_broker_registry/" target="_blank" rel="noopener">California Data Broker Registry</a>,
+  <a href="https://www.ecfr.gov/current/title-47/chapter-I/subchapter-B/part-64/subpart-L/section-64.1200" target="_blank" rel="noopener">47 CFR § 64.1200</a>,
+  and the FCC/FTC complaint systems.<br>
+  Your message is processed in your browser and never transmitted. No cookies, no analytics, no server.
+</footer>
+</div>
+
+<script src="brokers.js"></script>
+<script>
+/* ============================ SIGNAL EXTRACTION ============================ */
+const PER_SE = ["stop","quit","end","revoke","opt out","optout","cancel","unsubscribe"];
+const SHORTENERS = /\b(bit\.ly|tinyurl|t\.co|goo\.gl|ow\.ly|is\.gd|buff\.ly|rb\.gy|cutt\.ly|shorturl|tiny\.cc|lnkd\.in)\b/i;
+const SUSP_TLD = /\.(top|xyz|icu|cyou|rest|click|link|shop|vip|cfd|sbs|bond|monster|buzz|lol|live|world|today|info|online|site|store|fun|space|website|life|ru|cn|tk|ml|ga|cf|gq)\b/i;
+
+function extract(t){
+  const s = {};
+  s.raw = t;
+  s.lower = t.toLowerCase();
+  s.urls = [...t.matchAll(/\b((?:https?:\/\/|www\.)[^\s<>"']+|[a-z0-9][a-z0-9-]*\.[a-z]{2,}\/[^\s<>"']*)/gi)].map(m=>m[1]);
+  s.domains = s.urls.map(u=>{
+    try{ return new URL(u.startsWith("http")?u:"https://"+u).hostname.replace(/^www\./,""); }catch(e){ return u.split("/")[0]; }
+  });
+  s.phones = [...t.matchAll(/(?:\+?1[\s.-]?)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/g)].map(m=>m[0].trim());
+  s.money = [...t.matchAll(/\$\s?[\d,]+(?:\.\d{2})?/g)].map(m=>m[0]);
+  // street address: number + up to 4 words + suffix
+  const sfx = "(?:ave|avenue|st|street|rd|road|dr|drive|ln|lane|ct|court|blvd|boulevard|way|pl|place|ter|terrace|cir|circle|pkwy|parkway|hwy|trl|trail)";
+  const am = t.match(new RegExp("\\b(\\d{1,6}\\s+(?:[A-Z][A-Za-z'-]*\\s+){0,4}"+sfx+")\\b","i"));
+  s.address = am ? am[1].trim() : null;
+  // greeting name: "Hey Susan," / "Hi John -" / "Hello Mary!"
+  // NB: greeting is matched case-insensitively via explicit classes so the captured
+  // name can stay case-SENSITIVE (an /i flag would let [A-Z] match lowercase words).
+  const gm = t.match(/\b(?:[Hh][Ii]|[Hh][Ee][Yy]|[Hh][Ee][Ll][Ll][Oo]|[Gg]ood\s+(?:[Mm]orning|[Aa]fternoon|[Ee]vening))[,!\s]+([A-Z][a-z]{1,15})\b/)
+          || t.match(/^\s*([A-Z][a-z]{1,15})\s*[,!]\s+(?:are|do|would|is|this|i|we|just|quick)\b/);
+  s.name = gm ? gm[1] : null;
+  if(s.name && /^(there|again|it|is|this|how|are|hope|just|quick|i|we|you|the|and|good|sorry|congrats|urgent|final|alert|notice)$/i.test(s.name)) s.name = null;
+  // sign-off
+  const sg = t.match(/(?:[Tt]hanks|[Tt]hank you|[Rr]egards|[Bb]est|[Ss]incerely|[Cc]heers|[Ff]rom|-|—)\s*[,:]?\s*\n?\s*([A-Z][A-Za-z&.'\s]{1,28}?)\s*$/);
+  s.signer = sg ? sg[1].trim() : null;
+  if(s.signer && /^(regards|best|you|me|us|now|here|stop|end)$/i.test(s.signer)) s.signer = null;
+  // opt-out instruction + which word
+  const om = t.match(/reply\s+["']?([A-Za-z]{2,12})["']?\s*(?:to|for)\s+(?:end|stop|opt|unsub|cancel|quit|remove|be removed|no more)/i)
+          || t.match(/text\s+["']?([A-Za-z]{2,12})["']?\s+to\s+(?:end|stop|opt out|unsubscribe|cancel)/i)
+          || t.match(/\b(?:reply|text|send)\s+["']?(stop|quit|end|cancel|unsubscribe|optout|opt\s?out)["']?\b/i);
+  s.optWord = om ? om[1].toUpperCase().replace(/\s+/g,"") : null;
+  s.hasOptOut = !!s.optWord;
+  s.optIsPerSe = s.optWord ? PER_SE.includes(s.optWord.toLowerCase()) : false;
+  s.shortener = SHORTENERS.test(t);
+  s.suspTld = s.domains.some(d=>SUSP_TLD.test("."+d.split(".").slice(-1)[0]));
+  s.urgency = /\b(immediately|urgent|final notice|last warning|within 24 hours|today only|expires|act now|avoid (?:a )?(?:penalty|late fee|suspension))\b/i.test(t);
+  s.len = t.trim().length;
+  return s;
+}
+
+/* ============================ ARCHETYPES ============================ */
+// w = weight. Higher = stronger fingerprint.
+const A = [
+{
+ id:"realestate", label:"Real-estate wholesaler — cash-offer solicitation", risk:"COMMERCIAL",
+ sub:"A property investor, not a scammer. They're working a bulk list of property records with phone numbers appended.",
+ hits:[[/\b(letting go of|sell(ing)?\s+(your|the)\s+(house|home|property)|cash offer|as[- ]is|off[- ]market|no repairs|close (quickly|fast|in \d+ days)|any condition|buy your (house|home|property)|are you (still )?the owner|interested in selling|open to (selling|an offer)|make you an offer)\b/i,10],
+   [/\b(property|house|home|lot|parcel|real estate|acreage)\b/i,3],
+   [/\bwould you be open to\b/i,6],[/\binvestor|we buy\b/i,5]],
+ needAddr:4,
+ chain:[
+  {t:"County assessor / recorder — public record",d:"Your name and property address are a public record the moment a deed is filed. This is legal, and it is where the pairing starts.",v:["County assessor","County recorder","Tax rolls"]},
+  {t:"Bulk property-data aggregator",d:"Aggregators buy county records nationwide and resell them as searchable, filterable lists (\"absentee owner\", \"high equity\", \"pre-foreclosure\").",v:["ATTOM Data","CoreLogic","First American","PropStream","PropertyRadar","Black Knight"]},
+  {t:"Skip-trace phone append — where YOUR number entered",d:"The property record has no phone number. A skip-tracing vendor matches the owner name and address against identity graphs built from credit-header, utility, and marketing data, and appends a phone. This is the step that attaches a phone to a name — and the step that gets it wrong.",v:["BatchData / BatchSkipTracing","BatchLeads","REISkip","Skip Genie","TLOxp (TransUnion)","idiCORE","LexisNexis Accurint","Enformion","Whitepages Pro"]},
+  {t:"Mass-SMS platform built for this niche",d:"Purpose-built texting platforms blast the enriched list from rotating 10-digit numbers, which is why blocking one number doesn't stop it.",v:["Launch Control","Smarter Contact","Lead Sherpa","REI Reply","Batch Dialer","Roor"]},
+  {t:"The sender",d:"Usually a small wholesaler or a hired virtual assistant working someone else's list. The initials at the end are often the only identifying mark.",v:[]}
+ ],
+ agency:"fcc"
+},
+{
+ id:"debt", label:"Debt collection / debt relief", risk:"COMMERCIAL",
+ sub:"Collectors are among the heaviest users of skip tracing — which is exactly why a recycled number gets caught in it.",
+ hits:[[/\b(outstanding balance|past due|delinquen|collection agency|your (account|debt|balance)|settle (your|this)|creditor|original creditor|debt relief|consolidat|charged? off|resolve your account)\b/i,10],
+   [/\b(account|balance|payment plan|reduce|owe)\b/i,3]],
+ chain:[
+  {t:"The original account",d:"A defaulted or sold account is the root record. Portfolios of these are bought and sold in bulk, often several times.",v:["Original creditor","Debt buyers"]},
+  {t:"Skip tracing to find the person",d:"When a debtor can't be reached, the collector runs a skip trace. These tools return \"best known\" phone numbers with a confidence score — including numbers that were reassigned years ago.",v:["TLOxp (TransUnion)","LexisNexis Accurint","idiCORE","Enformion","Experian","Equifax"]},
+  {t:"Dialer / SMS platform",d:"The appended numbers are loaded into an outbound dialer or texting platform.",v:[]}
+ ],
+ agency:"cfpb"
+},
+{
+ id:"toll", label:"Toll-road smishing — this is a scam", risk:"SCAM",
+ sub:"There is no unpaid toll. The link harvests your card details. These are sent to numbers in bulk, mostly generated, not bought.",
+ hits:[[/\b(e-?zpass|fastrak|sunpass|toll|txtag|peachpass|ipass|good ?to ?go|tolls? by mail)\b/i,12],
+   [/\b(unpaid|outstanding toll|violation|late fee|penalty|final notice)\b/i,5]],
+ chain:[
+  {t:"Number generation, not a data leak",d:"Toll smishing is blasted across whole number ranges. In most cases nothing about you leaked — your number was simply in sequence.",v:[]},
+  {t:"Overseas SMS gateways / SIM farms",d:"Sent through gateways and hijacked devices that are hard to trace and rotate constantly.",v:[]},
+  {t:"Phishing kit",d:"The link leads to a cloned tolling-authority page built to capture card numbers and, increasingly, one-time passcodes.",v:[]}
+ ],
+ agency:"ic3"
+},
+{
+ id:"package", label:"Package-delivery smishing — this is a scam", risk:"SCAM",
+ sub:"No carrier texts you about an \"incomplete address\" with a link. The link is the payload.",
+ hits:[[/\b(usps|ups|fedex|dhl|royal mail|post ?office|parcel|package|shipment|tracking (number|code)|delivery (attempt|failed)|undeliverable|address is incomplete|reschedule (your )?delivery)\b/i,11],
+   [/\b(confirm|update|verify) your (address|details|information)\b/i,5]],
+ chain:[
+  {t:"Bulk number lists or generation",d:"Sent to enormous ranges of numbers with no personalization — note there is no real name or tracking number that matches anything you ordered.",v:[]},
+  {t:"Phishing kit impersonating a carrier",d:"Harvests address, card, and login details. Some variants push a malicious app install.",v:[]}
+ ],
+ agency:"uspis"
+},
+{
+ id:"bank", label:"Bank / fraud-alert smishing — this is a scam", risk:"SCAM",
+ sub:"The most dangerous archetype. Often paired with a phone call from a spoofed bank number moments later.",
+ hits:[[/\b(fraud alert|suspicious (activity|charge|transaction)|did you (attempt|authorize|make)|your (card|account) (has been )?(locked|suspended|restricted|frozen)|verify your account|unusual activity|unauthorized (charge|attempt)|zelle|wire transfer)\b/i,12],
+   [/\b(reply (y|n|yes|no)\b)/i,4],[/\b(bank|chase|wells fargo|boa|bank of america|citi|capital one|usaa|navy federal)\b/i,4]],
+ chain:[
+  {t:"Breached or purchased customer lists — or pure guessing",d:"Attackers blast a bank's name at huge number lists knowing a slice will be customers. Some campaigns do use breached banking-adjacent data.",v:[]},
+  {t:"Spoofed sender + follow-up call",d:"The text softens you up; a spoofed call then 'confirms' the fraud and walks you into moving money. Banks never ask you to move money to a 'safe account'.",v:[]}
+ ],
+ agency:"ic3"
+},
+{
+ id:"pig", label:"\"Wrong number\" opener — relationship/investment scam", risk:"SCAM",
+ sub:"A deliberately innocuous opener. The goal is a reply — any reply — that starts a weeks-long conversation ending in a fake investment platform.",
+ hits:[[/\b(is this|sorry,? (is|who)|wrong number|do (i|you) know you|have we met|long time no (see|talk)|remember me|are you (still )?(free|available)|this is (mia|anna|amy|lily|sophia|emily|jessica|linda))\b/i,9],
+   [/\b(golf|tennis|dinner|coffee|appointment|assistant|schedule)\b/i,3],
+   [/\b(whatsapp|telegram|line|signal)\b/i,6],
+   [/\b(crypto|bitcoin|usdt|eth|trading|investment|profit|portfolio|exchange)\b/i,7]],
+ shortBonus:true,
+ chain:[
+  {t:"Bulk lists and number generation",d:"These campaigns are volume plays. The opener is generic precisely so it works on anyone.",v:[]},
+  {t:"The reply is the product",d:"A reply proves a human is on the line. Confirmed-live numbers are worth more and get resold — which is why replying makes volume go up, not down.",v:[]},
+  {t:"Grooming, then a fake platform",d:"Weeks of friendly conversation, then an 'investment opportunity' on a site that shows fake gains and blocks withdrawal.",v:[]}
+ ],
+ agency:"ic3"
+},
+{
+ id:"job", label:"Job / task scam", risk:"SCAM",
+ sub:"Fake recruiter offering easy daily pay. Ends in you paying to 'unlock' commissions, or laundering funds.",
+ hits:[[/\b(part[- ]time|remote (job|work|position)|daily (pay|salary|income)|\d{2,4}\s*(?:usd|\$)?\s*(?:per|a|\/)\s*day|hiring|recruit|job offer|work from home|no experience|flexible hours|online (job|task)|rating tasks|product boosting)\b/i,10],
+   [/\b(whatsapp|telegram)\b/i,6]],
+ chain:[
+  {t:"Scraped or leaked job-board data — or plain enumeration",d:"Some campaigns target people who recently posted résumés; most are untargeted blasts.",v:["Job-board scrapes","Breached résumé databases"]},
+  {t:"Move to an off-platform chat",d:"They push immediately to WhatsApp or Telegram, where there is no moderation and no record.",v:[]}
+ ],
+ agency:"ic3"
+},
+{
+ id:"medicare", label:"Health insurance / Medicare lead generation", risk:"COMMERCIAL",
+ sub:"Driven by lead-gen forms with buried 'marketing partner' consent — the classic 'I never signed up for this' pipeline.",
+ hits:[[/\b(medicare|medicaid|health (plan|insurance|coverage)|aca|obamacare|affordable care|open enrollment|subsid|premium|benefits? (you|package)|final expense|dental (plan|coverage))\b/i,11]],
+ chain:[
+  {t:"Lead-generation web form",d:"A 'check your benefits' or quiz-style page with fine print consenting to contact from dozens or hundreds of 'marketing partners'.",v:["Lead-gen landing pages","Quiz/survey sites"]},
+  {t:"Lead aggregator / ping tree",d:"Your submission is auctioned in real time and can be sold to many buyers at once. One form fill produces months of calls.",v:["Lead aggregators","Ping-tree networks"]},
+  {t:"Licensed agent or call centre",d:"The eventual sender is often a downstream agency several hops from whoever collected the data.",v:[]}
+ ],
+ agency:"fcc"
+},
+{
+ id:"solar", label:"Solar / home-improvement lead generation", risk:"COMMERCIAL",
+ sub:"Targeted using property records — they know you own a roof.",
+ hits:[[/\b(solar|panels?|energy bill|utility bill|electric bill|roof|hvac|windows|gutters|gutter guard|gutters?|gutter|weatheriz|insulation|rebate|incentive program|no cost to homeowners?)\b/i,10],
+   [/\b(homeowner|your home|your property)\b/i,4]],
+ chain:[
+  {t:"Property records identify homeowners",d:"Ownership, build year, roof size and estimated equity all come from public and aggregated property data.",v:["County records","ATTOM Data","CoreLogic"]},
+  {t:"Phone append + lead-gen forms",d:"Skip-trace append, or a 'check your eligibility' form that sells the lead onward.",v:["Skip-trace vendors","Lead aggregators"]}
+ ],
+ agency:"fcc"
+},
+{
+ id:"auto", label:"Auto warranty / vehicle service contract", risk:"COMMERCIAL",
+ sub:"One of the most-fined categories in FCC history.",
+ hits:[[/\b(warranty|vehicle service contract|your (car|vehicle|auto)|bumper[- ]to[- ]bumper|factory warranty|coverage (on|for) your (car|vehicle)|extended (warranty|coverage))\b/i,12]],
+ chain:[
+  {t:"Vehicle registration, lienholder and dealer data",d:"Make, model and year come from registration, service, and warranty records resold through the automotive data market.",v:["DMV-derived data (state-dependent)","Dealer/DMS records","Lienholder data"]},
+  {t:"Lead aggregator, then call centre",d:"Sold on to boiler rooms that dial and text at enormous volume.",v:[]}
+ ],
+ agency:"fcc"
+},
+{
+ id:"student", label:"Student-loan forgiveness / repayment", risk:"COMMERCIAL",
+ sub:"Frequently a fee-for-service scam charging for something free at studentaid.gov.",
+ hits:[[/\b(student loan|forgiveness|loan repayment|borrower|federal loans?|income[- ]driven|pslf|refinanc(e|ing) your (student )?loans?|discharge)\b/i,12]],
+ chain:[
+  {t:"Lead-gen forms and breached education data",d:"'Check if you qualify' pages, plus resold lists of people with education-loan indicators.",v:["Lead aggregators"]},
+  {t:"Debt-relief boiler rooms",d:"Charge fees for free federal programs. Never pay for federal loan forgiveness.",v:[]}
+ ],
+ agency:"cfpb"
+},
+{
+ id:"political", label:"Political fundraising / campaign text", risk:"COMMERCIAL",
+ sub:"Different rules apply here — these are largely exempt from Do-Not-Call, and the source is a public record.",
+ hits:[[/\b(donate|chip in|contribut|campaign|ballot|election|vote|voting|poll|candidate|governor|senate|congress|president|match(ed|ing)? (your )?gift|deadline (is )?(tonight|midnight)|grassroots)\b/i,10]],
+ chain:[
+  {t:"The state voter file — a public record",d:"Your name, address, party registration and voting history are public records in most states. Campaigns buy the file legally.",v:["State voter file","L2","Aristotle","i360","TargetSmart"]},
+  {t:"Phone append",d:"Voter files are matched to commercial data to attach mobile numbers.",v:["Commercial data appends"]},
+  {t:"Peer-to-peer texting platform",d:"P2P platforms use human 'senders' to sidestep autodialer rules, which is why the volume is legal and relentless.",v:["P2P texting platforms"]}
+ ],
+ agency:"fcc"
+},
+{
+ id:"injury", label:"Personal-injury / mass-tort lead generation", risk:"COMMERCIAL",
+ sub:"Targeted from accident reports, court records, or medical-adjacent data.",
+ hits:[[/\b(accident|injur(y|ed)|were you (in|injured)|compensation|settlement (you|may)|claim (you|your)|mass tort|camp lejeune|roundup|talcum|mesothelioma|car crash|slip and fall)\b/i,11]],
+ chain:[
+  {t:"Accident reports and court records",d:"Police accident reports are public in many states and are resold within days.",v:["Police accident reports","Court dockets"]},
+  {t:"Lead-gen and case-acquisition networks",d:"Cases are bought and sold by marketing firms and referred to law firms.",v:["Legal lead aggregators"]}
+ ],
+ agency:"fcc"
+},
+{
+ id:"crypto", label:"Crypto / investment solicitation", risk:"SCAM",
+ sub:"Unsolicited investment texts are effectively never legitimate.",
+ hits:[[/\b(crypto|bitcoin|btc|eth|usdt|binance|coinbase|trading signal|pump|whale|guaranteed (return|profit)|\d+ ?% (daily|weekly|monthly|return)|investment (opportunity|group)|stock pick|insider)\b/i,11]],
+ chain:[
+  {t:"Bulk lists, breach data, and enumeration",d:"Often seeded from breached exchange or trading-app user lists.",v:["Breached exchange data"]},
+  {t:"Fake platform or pump-and-dump group",d:"Deposits show fake gains; withdrawals require ever-larger 'fees' and never arrive.",v:[]}
+ ],
+ agency:"ic3"
+},
+{
+ id:"timeshare", label:"Timeshare exit / resale solicitation", risk:"COMMERCIAL",
+ sub:"Targets people with a recorded timeshare interest — again, a property record.",
+ hits:[[/\b(timeshare|vacation (club|ownership)|maintenance fees|exit your|get out of your (timeshare|contract)|resale)\b/i,12]],
+ chain:[
+  {t:"Recorded timeshare deeds",d:"Timeshare interests are recorded property interests and appear in county records.",v:["County records","Resort/HOA lists"]},
+  {t:"Exit-company lead lists",d:"Sold between 'exit' companies, most of which charge large upfront fees.",v:[]}
+ ],
+ agency:"ftc"
+},
+{
+ id:"settlement", label:"Class-action / settlement claim", risk:"COMMERCIAL",
+ sub:"Some are genuine administrator notices; many are lead-gen or outright phishing.",
+ hits:[[/\b(class action|settlement (fund|administrator|claim)|you may be entitled|claim your (share|portion|payment)|deadline to (file|claim)|payout)\b/i,11]],
+ chain:[
+  {t:"Court-approved class lists, or scraped interest",d:"Real administrators mail or email — a cold text with a link deserves suspicion.",v:["Settlement administrators"]},
+  {t:"Verify independently",d:"Find the settlement's official site through a search engine, never through the link you were sent.",v:[]}
+ ],
+ agency:"ftc"
+},
+{
+ id:"generic", label:"Unsolicited commercial text", risk:"COMMERCIAL",
+ sub:"Marketing you didn't ask for. The remedies below still apply.",
+ hits:[[/\b(offer|deal|discount|sale|promo|limited time|sign up|subscribe|click|shop now)\b/i,4]],
+ chain:[
+  {t:"A form you filled in — or a list someone sold",d:"Most commercial texts trace to a web form with broad 'marketing partner' consent, or to a purchased marketing list.",v:["Lead aggregators","Marketing list brokers"]},
+  {t:"SMS marketing platform",d:"Sent through a bulk messaging provider on a registered campaign.",v:[]}
+ ],
+ agency:"fcc"
+}];
+
+/* ============================ CLASSIFY ============================ */
+function classify(s){
+  const scores = A.map(a=>{
+    let sc = 0, why = [];
+    a.hits.forEach(([re,w])=>{ const m = s.raw.match(re); if(m){ sc += w; why.push(m[0]); } });
+    if(a.needAddr && s.address) sc += a.needAddr;
+    if(a.shortBonus && s.len < 90 && !s.urls.length && !s.hasOptOut) sc += 6;
+    return {a, sc, why};
+  }).sort((x,y)=>y.sc-x.sc);
+
+  let top = scores[0];
+  // A link + urgency + no opt-out is the smishing signature; push scam archetypes up
+  if(top.sc < 6 && s.urls.length && !s.hasOptOut) {
+    const g = A.find(x=>x.id==="package");
+    top = {a:g, sc:5, why:[]};
+  }
+  if(top.sc < 4) top = {a:A.find(x=>x.id==="generic"), sc:0, why:[]};
+  const conf = top.sc >= 14 ? "high" : top.sc >= 8 ? "moderate" : top.sc >= 4 ? "low" : "very low";
+  return {arch:top.a, score:top.sc, conf, why:[...new Set(top.why)].slice(0,6), runners:scores.slice(1,3).filter(r=>r.sc>=5)};
+}
+
+/* ============================ STATES ============================ */
+const STATES = {AL:"Alabama",AK:"Alaska",AZ:"Arizona",AR:"Arkansas",CA:"California",CO:"Colorado",CT:"Connecticut",DE:"Delaware",DC:"District of Columbia",FL:"Florida",GA:"Georgia",HI:"Hawaii",ID:"Idaho",IL:"Illinois",IN:"Indiana",IA:"Iowa",KS:"Kansas",KY:"Kentucky",LA:"Louisiana",ME:"Maine",MD:"Maryland",MA:"Massachusetts",MI:"Michigan",MN:"Minnesota",MS:"Mississippi",MO:"Missouri",MT:"Montana",NE:"Nebraska",NV:"Nevada",NH:"New Hampshire",NJ:"New Jersey",NM:"New Mexico",NY:"New York",NC:"North Carolina",ND:"North Dakota",OH:"Ohio",OK:"Oklahoma",OR:"Oregon",PA:"Pennsylvania",RI:"Rhode Island",SC:"South Carolina",SD:"South Dakota",TN:"Tennessee",TX:"Texas",UT:"Utah",VT:"Vermont",VA:"Virginia",WA:"Washington",WV:"West Virginia",WI:"Wisconsin",WY:"Wyoming"};
+const SEVENTH = ["IL","IN","WI"];
+
+const AGENCIES = {
+ fcc:{n:"FCC — unwanted calls and texts",u:"https://consumercomplaints.fcc.gov/hc/en-us/requests/new",d:"The FCC handles unwanted commercial texts and shares complaint data with enforcement partners."},
+ ftc:{n:"FTC — fraud and deceptive practices",u:"https://reportfraud.ftc.gov/",d:"The FTC handles deceptive commercial practices and feeds the Consumer Sentinel database used by law enforcement."},
+ ic3:{n:"FBI IC3 — internet crime",u:"https://www.ic3.gov/",d:"For outright fraud attempts. IC3 aggregates reports to identify and disrupt campaigns."},
+ uspis:{n:"U.S. Postal Inspection Service",u:"https://www.uspis.gov/report",d:"Impersonating USPS is a federal offence USPIS actively investigates."},
+ cfpb:{n:"CFPB — debt collection",u:"https://www.consumerfinance.gov/complaint/",d:"The CFPB requires a company response to complaints about debt collection, and you have extra rights under the FDCPA."}
+};
+
+/* ============================ RENDER ============================ */
+const esc = t => String(t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function render(s, c, state, wrongName){
+  const scam = c.arch.risk === "SCAM";
+  const inSeventh = SEVENTH.includes(state);
+  const isCA = state === "CA";
+  let h = "";
+
+  /* --- verdict --- */
+  h += `<div class="sec"><h2>What this is</h2><div class="verdict">
+    <div class="vtext"><div class="vtitle">${esc(c.arch.label)}</div>
+    <div class="vsub">${esc(c.arch.sub)}</div>
+    <div class="conf">Confidence: <b>${c.conf}</b>${c.why.length?` — matched on ${c.why.map(w=>`“${esc(w.trim().slice(0,34))}”`).join(", ")}`:""}${
+      c.runners.length?`<br>Also resembles: ${c.runners.map(r=>esc(r.a.label.split("—")[0].trim())).join(", ")}`:""}</div></div>
+    <span class="badge ${scam?"b-scam":"b-comm"}">${scam?"SCAM":"UNWANTED MARKETING"}</span>
+  </div></div>`;
+
+  /* --- TRIAGE — first, always --- */
+  h += `<div class="sec"><h2>Do this first</h2><div class="triage">`;
+  if(scam){
+    h += tr("dont","✕","Do not reply — not even STOP","There is no company here to opt out of. A reply proves a human is on this number, which makes it more valuable and increases the volume you get.");
+    if(s.urls.length) h += tr("dont","✕","Do not open the link","That is the entire point of the message. Typing the real company's address into your browser yourself is always safe; their link is not.");
+    h += tr("do","✓","Block, report, delete","Report it first (below), then block the sender and delete the message.");
+    if(c.arch.id==="bank") h += tr("do","✓","If you're worried it's real, call the number on your card","Never a number from the text. Real banks will never ask you to move money to a “safe account”.");
+  } else {
+    if(s.optWord && !s.optIsPerSe){
+      h += tr("do","✓",`Reply <b>STOP</b> — not “${esc(s.optWord)}”`,
+        `Federal rule <b>47 CFR § 64.1200(a)(10)</b> lists the words that count as an opt-out automatically: <b>stop, quit, end, revoke, opt out, cancel, unsubscribe</b>. “${esc(s.optWord)}” is not one of them. Reply STOP and your consent is <b>definitively revoked</b>; reply “${esc(s.optWord)}” and you're relying on a weaker “would a reasonable person understand it” test. The same rule says a sender <b>may not designate an exclusive means</b> of opting out — so they cannot require their word.`);
+    } else if(s.optWord){
+      h += tr("do","✓","Reply STOP","“"+esc(s.optWord)+"” is on the FCC's list of words that count as an opt-out automatically. Once sent, consent is definitively revoked and they have <b>ten business days</b> to stop.");
+    } else {
+      h += tr("do","✓","Reply STOP anyway","There's no opt-out instruction here, but the rule doesn't require one. Replying STOP is a per-se revocation under 47 CFR § 64.1200(a)(10) and starts the ten-business-day clock regardless of what they told you.");
+    }
+    h += tr("do","✓","Screenshot it before you do anything","Capture the message, the sender's number, and the date and time. If they text again after your STOP, that screenshot is the evidence — and the second message is where the money is.");
+    h += tr("dont","✕","Don't click any link, and don't confirm your name","Confirming you're the person named — or that you own the property — upgrades a guess in their database into a verified record.");
+  }
+  h += `</div></div>`;
+
+  /* --- what they have --- */
+  h += `<div class="sec"><h2>What they actually have on you</h2><dl class="kv">`;
+  h += `<dt>Your number</dt><dd>Confirmed live to them the moment you reply${scam?" — which is why not replying matters":""}.</dd>`;
+  if(s.name) h += `<dt>A name</dt><dd><b>${esc(s.name)}</b>${wrongName?" — which you've told us isn't you":""}</dd>`;
+  if(s.address) h += `<dt>A property address</dt><dd><b>${esc(s.address)}</b> — this is almost certainly from a public county record, not from you.</dd>`;
+  if(s.signer) h += `<dt>Sender's mark</dt><dd>“${esc(s.signer)}” — usually initials of the business or the person working the list.</dd>`;
+  if(s.phones.length) h += `<dt>Callback number</dt><dd>${s.phones.map(p=>esc(p)).join(", ")}</dd>`;
+  if(s.domains.length) h += `<dt>Link domain</dt><dd>${s.domains.map(d=>esc(d)).join(", ")}${s.shortener?" (a URL shortener — hides the real destination)":""}${s.suspTld?" (a domain type heavily used in phishing)":""}</dd>`;
+  if(s.money.length) h += `<dt>Amount quoted</dt><dd>${s.money.map(m=>esc(m)).join(", ")}</dd>`;
+  h += `<dt>Opt-out offered</dt><dd>${s.optWord?esc(s.optWord)+(s.optIsPerSe?" — a standard keyword":" — <b>not</b> a standard keyword"):"none"}</dd>`;
+  h += `</dl>`;
+
+  if(wrongName && s.name){
+    h += `<div class="note"><b>Why it says ${esc(s.name)} and not your name.</b>
+    This is the single most common cause, and it is not a mistake about <i>you</i> — it's a mistake about <i>the number</i>.
+    US carriers recycle disconnected numbers, and there is <b>no federally mandated waiting period</b> before they do
+    (industry practice is roughly 45–90 days; it is not a rule). When your number was reissued to you, the data brokers
+    already held years of high-confidence links between it and ${esc(s.name)} — their addresses, relatives, property records.
+    Your claim on the number is one new, weak data point against all of that. So the matching algorithm draws the
+    likelier conclusion: that <i>you</i> are an alias or relative of ${esc(s.name)}. It then hands your number back out
+    attached to their name and their house.<br><br>
+    The FCC does run a Reassigned Numbers Database — but <b>consumers cannot query it or register in it</b>. It exists to
+    protect callers from liability, not to correct broker records. That's why the fix below is deletion at the brokers,
+    not a call to the FCC.</div>`;
+  }
+  if(s.optWord && !s.optIsPerSe && !scam){
+    h += `<div class="flag"><b>“Reply ${esc(s.optWord)} to End” is a tell.</b> Legitimate, compliant senders use STOP,
+    because STOP is what the carriers' own filtering acts on and what the FCC lists as an automatic opt-out. Steering you
+    toward a custom word means your reply may never reach a system that treats it as an opt-out at all.</div>`;
+  }
+  if(scam && s.urls.length){
+    h += `<div class="flag"><b>The link is the attack.</b> Nothing else in this message matters. Do not open it, and do not
+    open it "just to see" — modern phishing kits fingerprint your device on load.</div>`;
+  }
+  h += `</div>`;
+
+  /* --- supply chain --- */
+  h += `<div class="sec"><h2>How they got to you</h2><div class="chain">`;
+  c.arch.chain.forEach(st=>{
+    h += `<div class="stage"><div class="st">${esc(st.t)}</div><div class="sd">${st.d}</div>`;
+    if(st.v && st.v.length) h += `<div class="vendors">${st.v.map(v=>`<span class="vend">${esc(v)}</span>`).join("")}</div>`;
+    h += `</div>`;
+  });
+  h += `</div><div class="note" style="margin-top:4px"><b>How to read this.</b> These are the named companies that
+  operate at each stage of this archetype's supply chain — not an accusation that a specific one sold your number.
+  The point is that the chain is knowable, and that most of it is reachable with a deletion request.</div></div>`;
+
+  /* --- cut it off --- */
+  h += `<div class="sec"><h2>Cut it off — in this order</h2>
+  <div class="note" style="margin-top:0;margin-bottom:16px"><b>Order matters, and most guides get it backwards.</b>
+  People-search sites license their data from a handful of upstream aggregators. Clean a people-search site first and the
+  upstream feed simply re-imports you on the next refresh. Work top-down.</div><ol class="acts">`;
+
+  let n = 0;
+  if(isCA){
+    h += act(++n,"Submit one deletion request through California's DROP","p1",
+      `California is the only state with a single request that reaches <b>every registered data broker at once</b> —
+       all <b>${REGISTRY_STATS.total}</b> of them. It's free, run by the state, and you can submit your
+       <b>phone number</b> as an identifier, which is exactly the handle this problem hangs on.
+       Brokers are legally required to start processing these <b>from 1 August 2026</b>, then at least once every 45 days
+       (Cal. Civ. Code § 1798.99.86(c)). You'll verify California residency through the state's identity gateway.`,
+      "https://consumer.drop.privacy.ca.gov/","Open DROP");
+  }
+  if(scam){
+    h += act(++n,"Forward the message to 7726","p1",
+      `Forward the text to <b>7726</b> (spells SPAM). It's free on AT&T, Verizon, T-Mobile and most US carriers, and it
+       feeds the carrier's own spam filters — this is the action that actually reduces what reaches other people, fast.
+       Your carrier may reply asking you to forward the sender's number too.`);
+  } else {
+    h += act(++n,"Forward the message to 7726","p1",
+      `Free on all major US carriers. This reports the sender to the carrier's spam-filtering system, which is a faster
+       lever than any regulator. Then reply STOP to the sender itself (see above).`);
+  }
+
+  if(!scam){
+    const tags = c.arch.id==="realestate" ? ["realestate","skiptrace"]
+               : c.arch.id==="debt" ? ["debt","skiptrace"]
+               : ["marketing","skiptrace"];
+    h += act(++n,"Delete yourself at the upstream identity brokers","p1",
+      `These are the companies that <b>append phone numbers to names</b> — the step that put your number in this list.
+       Removing yourself here stops the re-import that undoes everything else. Every link below is the broker's own
+       consumer-rights URL as declared to the State of California, where it is legally required to be accurate.`);
+    h += brokerTable(tags);
+  }
+
+  h += act(++n,"Opt out of the credit-header marketing layer","p2",
+    `Two federal opt-outs cover a lot of ground and take about five minutes each:
+     the credit bureaus' joint prescreen opt-out, and the direct-marketing association's suppression file.`,
+    "https://www.optoutprescreen.com/","OptOutPrescreen (5-year or permanent)");
+  h += `<div style="margin:-10px 0 18px 42px"><a class="btn" href="https://www.dmachoice.org/" target="_blank" rel="noopener">DMAchoice suppression</a>
+        <a class="btn" href="https://www.donotcall.gov/" target="_blank" rel="noopener">Register on the Do Not Call list</a></div>`;
+
+  if(!isCA){
+    let sh = `A single national delete button doesn't exist yet — California's DROP is the only one, and it's residents-only.
+      What you can do from ${state?esc(STATES[state]):"your state"} is delete broker-by-broker using the list above, and check the
+      state registries below: they are public and searchable, and a broker registered in one state usually honours requests from anywhere.`;
+    h += act(++n,"Use the state data-broker registries","p2",sh,
+      "https://cppa.ca.gov/data_broker_registry/","California registry (searchable, "+REGISTRY_STATS.total+" brokers)");
+    h += `<div style="margin:-10px 0 18px 42px">
+      <a class="btn" href="https://bizfilings.vermont.gov/online/DatabrokerInquire/" target="_blank" rel="noopener">Vermont registry</a>
+      <a class="btn" href="https://www.sos.state.tx.us/datasecurity/index.shtml" target="_blank" rel="noopener">Texas registry</a></div>`;
+  }
+  h += `</ol></div>`;
+
+  /* --- report --- */
+  const ag = AGENCIES[c.arch.agency];
+  h += `<div class="sec"><h2>Report it — with the complaint already written</h2>
+    <div class="acts"><div class="at">${esc(ag.n)}</div><div class="ad">${esc(ag.d)}</div>
+    <a class="btn" href="${ag.u}" target="_blank" rel="noopener">Open the complaint form →</a></div>`;
+  if(!scam) h += `<div class="acts" style="margin-top:16px"><div class="at">Also: FTC</div>
+    <div class="ad">Worth filing both — the FCC drives telecom enforcement, the FTC's database is what state attorneys general search.</div>
+    <a class="btn" href="https://reportfraud.ftc.gov/" target="_blank" rel="noopener">reportfraud.ftc.gov →</a></div>`;
+  if(c.arch.id==="realestate") h += `<div class="acts" style="margin-top:16px"><div class="at">And your state real-estate commission</div>
+    <div class="ad">If the sender is soliciting property deals without a licence, the state real-estate commission is a
+    complaint channel almost nobody uses — which is exactly why it gets attention.</div></div>`;
+
+  h += `<div style="margin-top:18px"><div class="at" style="font-weight:700;margin-bottom:8px">Your complaint text — copy and paste it in</div>
+    <div class="copybox"><pre class="complaint" id="cx">${esc(complaint(s,c,state,wrongName))}</pre>
+    <button class="copy" id="cbtn">Copy complaint text</button></div></div></div>`;
+
+  /* --- receipts --- */
+  h += `<div class="sec"><h2>If it keeps coming — the receipts</h2>`;
+  if(scam){
+    h += `<p style="color:var(--dim);font-size:14.5px">Scam senders are usually offshore and effectively unsuable. Your
+    leverage is carrier-level: <b>forward every one to 7726</b>, block, and report. If you lost money, file with IC3
+    immediately — recovery odds fall off sharply after the first 24–48 hours — and call your bank about a recall.</p>`;
+  } else {
+    h += `<p style="color:var(--dim);font-size:14.5px">Unsolicited marketing texts carry real statutory damages, and
+    they're enforceable by <i>you</i>, not just a regulator.</p>
+    <dl class="kv" style="margin-top:14px">
+      <dt>47 U.S.C. § 227(b)(3)</dt><dd><b>$500 per text</b>, and up to <b>$1,500 per text</b> if the violation was
+        willful or knowing. Each message counts separately — and a message sent <i>after</i> you replied STOP is the
+        strongest case there is.</dd>
+      <dt>Ten business days</dt><dd>Once you revoke, they have ten business days to stop (47 CFR § 64.1200(a)(10)).
+        Anything after that window is hard to explain away.</dd>
+      <dt>Do Not Call</dt><dd>Register your number, then wait <b>31 days</b>. Texts after that to a registered number
+        can support a separate claim — with one important exception below.</dd>
+    </dl>`;
+    if(inSeventh){
+      h += `<div class="flag" style="margin-top:16px"><b>Important for ${esc(STATES[state])} — this changed two weeks ago.</b>
+      In <i>Steidinger v. Blackstone Medical Services</i>, No. 25-2398 (7th Cir. <b>14 July 2026</b>), the Seventh Circuit
+      held that a text message is <b>not a “telephone call”</b> under § 227(c)(5). In Illinois, Indiana and Wisconsin you
+      therefore <b>cannot</b> bring a Do-Not-Call claim under that provision for marketing texts, even with your number on
+      the registry. Your § 227(b) claim and your state-law claims are <b>unaffected</b> — and the Ninth Circuit went the
+      other way in <i>Howard v. RNC</i>, so this is an open circuit split that may reach the Supreme Court.</div>`;
+    } else {
+      h += `<div class="note" style="margin-top:16px"><b>One live wrinkle worth knowing.</b> On 14 July 2026 the Seventh
+      Circuit held in <i>Steidinger v. Blackstone Medical Services</i> that texts are not “telephone calls” under
+      § 227(c)(5), closing the Do-Not-Call route for texts in <b>Illinois, Indiana and Wisconsin</b> only. The Ninth
+      Circuit reached the opposite conclusion in <i>Howard v. RNC</i>. ${state?`It does not bind ${esc(STATES[state])}`:"It binds only those three states"},
+      but it's an open circuit split — worth raising with any attorney you speak to.</div>`;
+    }
+    h += `<div class="note"><b>What to preserve, starting now.</b> Screenshots showing the message, the sender's number
+    and the timestamp; a note of the date you replied STOP; and every message received afterwards. Small-claims court
+    handles TCPA claims in many states and doesn't require a lawyer — the case is built on that timeline.</div>`;
+  }
+  h += `</div>`;
+
+  /* --- registry stats --- */
+  h += `<div class="sec"><h2>The industry, in its own numbers</h2>
+    <p style="color:var(--dim);font-size:14.5px">Every figure here is self-reported by the brokers themselves to the
+    State of California, where filing false information carries administrative penalties. Of
+    <b>${REGISTRY_STATS.total}</b> registered data brokers, in 2024 they received
+    <b>${REGISTRY_STATS.req.toLocaleString()}</b> deletion requests and denied
+    <b>${REGISTRY_STATS.denied.toLocaleString()}</b> of them.
+    <b>${REGISTRY_STATS.le}</b> sold data to law enforcement, <b>${REGISTRY_STATS.gov}</b> to the federal government,
+    <b>${REGISTRY_STATS.foreign}</b> to a foreign actor, and <b>${REGISTRY_STATS.genai}</b> to a developer of a
+    generative-AI system. <b>${REGISTRY_STATS.geo}</b> collect precise geolocation.</p>
+    <a class="btn" href="https://cppa.ca.gov/data_broker_registry/" target="_blank" rel="noopener">Search all ${REGISTRY_STATS.total} brokers →</a></div>`;
+
+  return h;
+}
+
+function tr(kind, ic, k, v){
+  return `<div class="tr ${kind}"><div class="ic">${ic}</div><div><div class="k">${k.replace(/<[^>]*>/g,"").toUpperCase().slice(0,0)}${k}</div><div class="v">${v}</div></div></div>`;
+}
+function act(n,title,pri,desc,url,label){
+  return `<li><div class="at">${title}<span class="pri ${pri}">${pri==="p1"?"DO THIS":"WORTH IT"}</span></div>
+  <div class="ad">${desc}</div>${url?`<a class="btn" href="${url}" target="_blank" rel="noopener">${label} →</a>`:""}</li>`;
+}
+function brokerTable(tags){
+  const rows = BROKERS.filter(b=>b.t.some(t=>tags.includes(t)))
+                      .sort((a,b)=>(b.req||0)-(a.req||0)).slice(0,14);
+  if(!rows.length) return "";
+  let h = `<div class="scroll" style="margin:-6px 0 18px 42px"><table><thead><tr>
+    <th>Broker</th><th>Opt out</th><th>2024 denial rate</th></tr></thead><tbody>`;
+  rows.forEach(b=>{
+    const d = b.deny;
+    const cls = d===null?"d-lo":(d>=40?"d-hi":d>=10?"d-mid":"d-lo");
+    const txt = d===null?"—":d+"%";
+    h += `<tr><td>${esc(b.n)}${b.note?`<div style="color:var(--dimmer);font-size:12px;margin-top:2px">${esc(b.note)}</div>`:""}</td>
+      <td><a href="${esc(b.u)}" target="_blank" rel="noopener">open →</a></td>
+      <td class="deny ${cls}">${txt}${b.req?`<div style="color:var(--dimmer);font-weight:400;font-size:11px">of ${b.req.toLocaleString()}</div>`:""}</td></tr>`;
+  });
+  return h + `</tbody></table></div>`;
+}
+
+/* ============================ COMPLAINT GENERATOR ============================ */
+function complaint(s,c,state,wrongName){
+  const d = new Date().toISOString().slice(0,10);
+  let L = [];
+  L.push(`On or about ${d} I received an unsolicited text message on my personal mobile telephone.`);
+  L.push("");
+  L.push("MESSAGE RECEIVED (verbatim):");
+  L.push('"""');
+  L.push(s.raw.trim());
+  L.push('"""');
+  L.push("");
+  if(s.phones.length) L.push(`Callback number given in the message: ${s.phones.join(", ")}`);
+  if(s.domains.length) L.push(`Link domain in the message: ${s.domains.join(", ")}`);
+  if(s.signer) L.push(`Sender identified itself only as: "${s.signer}"`);
+  L.push("");
+  L.push("WHY THIS IS A VIOLATION:");
+  L.push("1. I never gave this sender prior express written consent to send marketing text messages to my mobile number, and I have no business relationship with them.");
+  let i = 2;
+  if(wrongName && s.name){
+    L.push(`${i++}. The message is addressed to "${s.name}", who is not me. My telephone number appears to have been previously assigned to a different subscriber, and the sender is relying on stale third-party data rather than on any consent I gave.`);
+  }
+  if(s.address){
+    L.push(`${i++}. The message references the property "${s.address}", with which I have no connection. This indicates the sender obtained my number by appending it to a public property record through a third-party skip-tracing service.`);
+  }
+  if(s.optWord && !s.optIsPerSe){
+    L.push(`${i++}. The message instructs recipients to "Reply ${s.optWord}" to opt out. "${s.optWord}" is not among the words that 47 CFR 64.1200(a)(10) identifies as a per-se reasonable means of revoking consent (stop, quit, end, revoke, opt out, cancel, unsubscribe). That same provision states that a sender "may not designate an exclusive means to request revocation of consent." Directing recipients to a non-standard keyword frustrates the opt-out mechanism the rule is intended to guarantee.`);
+  }
+  if(!s.hasOptOut){
+    L.push(`${i++}. The message contains no opt-out instructions of any kind.`);
+  }
+  if(c.arch.risk === "SCAM"){
+    L.push(`${i++}. The message appears to be a fraudulent phishing attempt. It impersonates a legitimate organisation in order to induce recipients to disclose financial or personal information.`);
+  }
+  L.push("");
+  L.push("REQUESTED ACTION:");
+  L.push("Please investigate the sender and the messaging platform used to transmit this message. I did not consent to receive it, and I am asking that my number be removed from all associated lists.");
+  L.push("");
+  L.push("I have preserved a screenshot of the message showing the sender's number and the date and time of receipt, and can supply it on request.");
+  return L.join("\n");
+}
+
+/* ============================ SAMPLES + WIRING ============================ */
+const SAMPLES = {
+ re:"Hey Susan, Would you be open to letting go of 14 Roselle Ave? Lets connect\nReply HALT to End\nThanks,RRE",
+ toll:"Final Notice: You have an unpaid toll of $6.99. To avoid a late fee of $75.00, pay now at ezpass-toll-svc.top/pay",
+ pig:"Hi is this Mia? Sorry I think I have the wrong number, but you seem nice. How is your week going?",
+ debt:"This is a message from ARM Solutions regarding an outstanding balance on your account. Call 800-555-0142 to settle for 40% less. Reply STOP to end.",
+ pkg:"USPS: Your package could not be delivered because the address is incomplete. Update here: usps-redelivery.icu/us"
+};
+
+const $ = id => document.getElementById(id);
+const sel = $("st");
+sel.innerHTML = '<option value="">— Select —</option>' +
+  Object.entries(STATES).map(([k,v])=>`<option value="${k}">${v}</option>`).join("");
+
+document.querySelectorAll(".samp").forEach(el=>{
+  el.addEventListener("click",()=>{ $("msg").value = SAMPLES[el.dataset.s]; run(); });
+});
+
+function run(){
+  const t = $("msg").value.trim();
+  if(!t){ $("out").innerHTML = ""; $("msg").focus(); return; }
+  const s = extract(t);
+  const c = classify(s);
+  const nm = $("notme").value;
+  const wrong = nm === "no" || (nm === "auto" && !!s.name);
+  $("out").innerHTML = render(s, c, sel.value, wrong);
+  const b = $("cbtn");
+  if(b) b.addEventListener("click", ()=>{
+    const txt = $("cx").innerText;
+    navigator.clipboard.writeText(txt).then(()=>{
+      b.textContent = "Copied ✓"; setTimeout(()=>b.textContent="Copy complaint text",1900);
+    }).catch(()=>{
+      const r = document.createRange(); r.selectNode($("cx"));
+      window.getSelection().removeAllRanges(); window.getSelection().addRange(r);
+      b.textContent = "Selected — press ⌘C / Ctrl+C";
+    });
+  });
+  $("out").scrollIntoView({behavior:"smooth",block:"start"});
+}
+$("go").addEventListener("click", run);
+sel.addEventListener("change", ()=>{ if($("out").innerHTML) run(); });
+$("notme").addEventListener("change", ()=>{ if($("out").innerHTML) run(); });
+$("msg").addEventListener("keydown", e=>{ if((e.metaKey||e.ctrlKey) && e.key==="Enter") run(); });
+</script>
+</body>
+</html>

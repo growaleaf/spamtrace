@@ -230,14 +230,30 @@ function packForm(){
   <button class="go wide" id="genPack">Generate my letters →</button></div>`;
 }
 
+/* generatePack() replaces #packout, which destroys the form it reads from. So the
+   person is captured once and reused — otherwise regenerating (which is exactly
+   what unlocking does) would throw at the moment someone has just paid.
+   sessionStorage keeps it across the Stripe round-trip and dies with the tab,
+   which is the same promise the page makes on screen. */
+let PERSON=null;
+const PKEY="spamtrace_person";
+function readPerson(){
+  if($("pName")){
+    const p={fullName:$("pName").value.trim(), email:$("pEmail").value.trim(), phone:$("pPhone").value.trim(),
+      addr:$("pAddr").value.trim(), prevAddr:$("pPrev").value.trim(), alsoKnown:$("pAka").value.trim(),
+      state:$("st").value, wrongName:LAST&&LAST.wrongName, wrongNameValue:LAST&&LAST.s.name};
+    PERSON=p; try{sessionStorage.setItem(PKEY,JSON.stringify(p));}catch(e){}
+    return p;
+  }
+  if(PERSON) return PERSON;
+  try{ const raw=sessionStorage.getItem(PKEY); if(raw){ PERSON=JSON.parse(raw); return PERSON; } }catch(e){}
+  return null;
+}
+function forgetPerson(){ PERSON=null; try{sessionStorage.removeItem(PKEY);}catch(e){} }
+
 function generatePack(){
-  const p={
-    fullName:$("pName").value.trim(), email:$("pEmail").value.trim(), phone:$("pPhone").value.trim(),
-    addr:$("pAddr").value.trim(), prevAddr:$("pPrev").value.trim(), alsoKnown:$("pAka").value.trim(),
-    state:$("st").value,
-    wrongName:LAST&&LAST.wrongName, wrongNameValue:LAST&&LAST.s.name
-  };
-  if(!p.fullName||!p.email){ alert("Add at least your name and email — brokers cannot match a record or reply without them."); return; }
+  const p=readPerson();
+  if(!p||!p.fullName||!p.email){ alert("Add at least your name and email — brokers cannot match a record or reply without them."); return; }
   const pro=unlocked();
   const all=brokersFor(LAST?LAST.c.arch.classes:[], false);
   const list=pro?all:all.slice(0,FREE_LIMIT);
@@ -260,6 +276,7 @@ function generatePack(){
     <button class="copy" id="copyBody">Copy the letter</button>
     <button class="copy" id="dlCsv">Download tracker (CSV)</button>
     <button class="copy" id="dlAll">Download all letters (.txt)</button>
+    <button class="copy" id="wipe" style="color:var(--dimmer)">Wipe my details</button>
   </div>
   <div style="margin-top:16px"><div class="at" style="font-weight:700;margin-bottom:8px">The letter that will be sent</div>
   <pre class="doc" id="letterEx">${esc(requestBody(p,null))}</pre></div>`;
@@ -421,8 +438,18 @@ function wirePack(p,list,today){
   };
   const bb=$("buyBtn"); if(bb) bb.onclick=()=>{
     const url=window.SPAMTRACE_PAY_URL;
-    if(url) window.open(url,"_blank","noopener");
-    else alert("Payment link is not configured on this build yet. Use a code if you have one.");
+    if(!url){ alert("Payment link is not configured on this build yet. Use a code if you have one."); return; }
+    // same tab on purpose: Stripe redirects back to ?pro=1 and sessionStorage
+    // still holds the details, so the buyer lands on their finished letters.
+    readPerson();
+    location.href=url;
+  };
+  const wp=$("wipe"); if(wp) wp.onclick=()=>{
+    forgetPerson();
+    try{ sessionStorage.removeItem("spamtrace_msg"); }catch(e){}
+    $("packout").innerHTML=`<div class="sec"><h2>Wiped</h2><p style="color:var(--dim);font-size:14.5px">
+      Your details are gone from this device. Download or copy your letters before wiping if you still need them —
+      nothing was stored anywhere else, so there is no copy for us to give you.</p></div>`;
   };
   const cbt=$("codeBtn"); if(cbt) cbt.onclick=()=>{
     if(unlock($("codeIn").value)){ generatePack(); }
@@ -448,6 +475,7 @@ function run(){
   const s=extract(t), c=classify(s), nm=$("notme").value;
   const wrong = nm==="no" || (nm==="auto" && !!s.name);
   LAST={s,c,state:$("st").value,wrongName:wrong};
+  try{ sessionStorage.setItem("spamtrace_msg",t); }catch(e){}
   $("out").innerHTML=render(s,c,$("st").value,wrong);
   $("packout").innerHTML="";
   const bp=$("buildPack");
@@ -456,6 +484,18 @@ function run(){
     $("packout").scrollIntoView({behavior:"smooth",block:"start"}); };
   $("out").scrollIntoView({behavior:"smooth",block:"start"});
 }
+/* Returning from checkout: rebuild the finished pack rather than an empty form. */
+(function resumeAfterPurchase(){
+  let isPro=false; try{ isPro=new URLSearchParams(location.search).get("pro")==="1"; }catch(e){}
+  if(!isPro) return;
+  const p=readPerson();
+  if(!p||!p.fullName) return;
+  let msg=""; try{ msg=sessionStorage.getItem("spamtrace_msg")||""; }catch(e){}
+  if(msg){ $("msg").value=msg; if(p.state) $("st").value=p.state; run(); }
+  if($("buildPack")) $("buildPack").click();
+  generatePack();
+})();
+
 $("go").addEventListener("click",run);
 $("st").addEventListener("change",()=>{ if($("out").innerHTML) run(); });
 $("notme").addEventListener("change",()=>{ if($("out").innerHTML) run(); });

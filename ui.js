@@ -32,14 +32,14 @@ function render(s,c,state,wrongName){
   const scam=c.arch.risk==="SCAM", inSeventh=SEVENTH.includes(state), isCA=state==="CA";
   let h="";
 
-  h+=`<div class="sec"><h2>What this is</h2><div class="verdict"><div class="vtext">
+  h+=`<div class="sec"><h2>${T.h.what}</h2><div class="verdict"><div class="vtext">
     <div class="vtitle">${esc(c.arch.label)}</div><div class="vsub">${esc(c.arch.sub)}</div>
     <div class="conf">Confidence: <b>${c.conf}</b>${c.why.length?` — matched on ${c.why.map(w=>`“${esc(w.trim().slice(0,34))}”`).join(", ")}`:""}${
       c.runners.length?`<br>Also resembles: ${c.runners.map(r=>esc(r.a.label.split("—")[0].trim())).join(", ")}`:""}</div></div>
-    <span class="badge ${scam?"b-scam":"b-comm"}">${scam?"SCAM":"UNWANTED MARKETING"}</span></div></div>`;
+    <span class="badge ${scam?"b-scam":"b-comm"}">${scam?T.badgeScam:T.badgeComm}</span></div></div>`;
 
   /* triage */
-  h+=`<div class="sec"><h2>Do this first</h2><div class="triage">`;
+  h+=`<div class="sec"><h2>${T.h.first}</h2><div class="triage">`;
   if(scam){
     h+=tr("dont","✕","Do not reply — not even STOP","There is no company here to opt out of. A reply proves a human is on this number, which makes it more valuable and increases what you get.");
     if(s.urls.length) h+=tr("dont","✕","Do not open the link","That is the entire point of the message. Typing a company's address into your browser yourself is always safe; their link is not.");
@@ -60,7 +60,7 @@ function render(s,c,state,wrongName){
   h+=`</div></div>`;
 
   /* what they have */
-  h+=`<div class="sec"><h2>What they actually have on you</h2><dl class="kv">`;
+  h+=`<div class="sec"><h2>${T.h.have}</h2><dl class="kv">`;
   h+=`<dt>Your number</dt><dd>Confirmed live to them the moment you reply${scam?" — which is why not replying matters":""}.</dd>`;
   if(s.name) h+=`<dt>A name</dt><dd><b>${esc(s.name)}</b>${wrongName?" — which you've told us isn't you":""}</dd>`;
   if(s.address) h+=`<dt>A property address</dt><dd><b>${esc(s.address)}</b> — almost certainly from a public county record, not from you.</dd>`;
@@ -94,7 +94,7 @@ function render(s,c,state,wrongName){
   h+=`</div>`;
 
   /* chain */
-  h+=`<div class="sec"><h2>How they got to you</h2><div class="chain">`;
+  h+=`<div class="sec"><h2>${T.h.chain}</h2><div class="chain">`;
   c.arch.chain.forEach(st=>{
     h+=`<div class="stage"><div class="st">${esc(st.t)}</div><div class="sd">${st.d}</div>`;
     if(st.v&&st.v.length) h+=`<div class="vendors">${st.v.map(v=>`<span class="vend">${esc(v)}</span>`).join("")}</div>`;
@@ -105,7 +105,7 @@ function render(s,c,state,wrongName){
   chain is knowable, and most of it is reachable with a deletion request.</div></div>`;
 
   /* actions */
-  h+=`<div class="sec"><h2>Cut it off — in this order</h2>
+  h+=`<div class="sec"><h2>${T.h.cut}</h2>
   <div class="note" style="margin-top:0;margin-bottom:16px"><b>Order matters, and most guides get it backwards.</b>
   People-search sites license their data from a handful of upstream aggregators. Clean a people-search site first and
   the upstream feed re-imports you on the next refresh. Work top-down.</div><ol class="acts">`;
@@ -131,7 +131,7 @@ function render(s,c,state,wrongName){
 
   /* report */
   const ag=AGENCIES[c.arch.agency];
-  h+=`<div class="sec"><h2>Report it — complaint already written</h2>
+  h+=`<div class="sec"><h2>${T.h.report}</h2>
     <div class="acts"><div class="at">${esc(ag.n)}</div><div class="ad">${esc(ag.d)}</div>
     <a class="btn" href="${ag.u}" target="_blank" rel="noopener">Open the complaint form →</a></div>`;
   if(!scam) h+=`<div class="acts" style="margin-top:16px"><div class="at">Also: FTC</div>
@@ -142,7 +142,7 @@ function render(s,c,state,wrongName){
     <button class="copy" data-copy="cx">Copy complaint text</button></div></div>`;
 
   /* receipts */
-  h+=`<div class="sec"><h2>If it keeps coming — the receipts</h2>`;
+  h+=`<div class="sec"><h2>${T.h.receipts}</h2>`;
   if(scam){
     h+=`<p style="color:var(--dim);font-size:14.5px">Scam senders are usually offshore and effectively unsuable. Your
     leverage is carrier-level: forward every one to <b>7726</b>, block, report. If you lost money, file with IC3
@@ -181,32 +181,28 @@ function packPitch(c){
   const targets=brokersFor(c.arch.classes,false);
   const relevant=targets.filter(b=>b.t.some(t=>(c.arch.classes||[]).includes(t))).length||FREE_LIMIT;
   const t=timeModel(REGISTRY_STATS.total);
-  return `<div class="sec" id="packsec"><h2>Delete yourself at the source</h2>
-  <p style="color:var(--dim);font-size:15px">Replying STOP silences one sender. It doesn't remove the record that
-  produced them — the next buyer of that list texts you next month. To stop it properly you have to delete the
-  underlying data, and that means a formal request to each company holding it.</p>
+  return `<div class="sec" id="packsec"><h2>${T.h.pack}</h2>
+  <p style="color:var(--dim);font-size:15px">${T.packLead}</p>
   <div class="stats" style="margin-top:16px">
     <div class="stat"><div class="n">${REGISTRY_STATS.total}</div><div class="l">registered data brokers, each with a legally-published privacy contact</div></div>
     <div class="stat"><div class="n">${humanHours(t.mid)}</div><div class="l">to do all of it by hand at ~15 min each</div></div>
     <div class="stat"><div class="n">${REGISTRY_STATS.email}</div><div class="l">reachable by email — no forms, no CAPTCHAs</div></div>
     <div class="stat"><div class="n">45 days</div><div class="l">statutory deadline to respond, in most states</div></div>
   </div>
-  <div class="win"><b>Spamtrace writes every letter.</b> You fill in your details once. It generates a personalised,
-  legally-formed deletion demand for each broker — citing your state's statute, addressed to that broker's registered
-  privacy contact, with the response deadline calculated. You send them from your own email in a few taps.</div>
+  <div class="win">${T.packWin}</div>
   <div class="note"><b>Why you send them, not us.</b> Under <b>11 CCR § 7063</b> a company receiving a request from an
   <i>agent</i> may demand proof you gave that agent signed permission, and may make you verify your identity separately.
   A request that arrives <b>directly from you</b> carries none of that friction — it's faster and harder to refuse. It
   also means your name, address and phone never leave your device. We think that's strictly better than the
   done-for-you services, and it's why we built it this way.</div>
-  <button class="go wide" id="buildPack">Build my removal pack →</button></div>`;
+  <button class="go wide" id="buildPack">${T.packBtn}</button></div>`;
 }
 
 function packForm(){
   const st=$("st").value;
   const L=lawFor(st);
   const nm=LAST&&LAST.wrongName&&LAST.s.name?LAST.s.name:"";
-  return `<div class="sec"><h2>Your details — never leaves this device</h2>
+  return `<div class="sec"><h2>${T.h.details}</h2>
   <p style="color:var(--dim);font-size:14.5px;margin-bottom:16px">Brokers can only delete what they can find. The more
   identifiers you give, the more of your record they can match — but everything here is optional and nothing is
   transmitted anywhere. It is used to write the letters, in your browser, and then it's gone when you close the tab.</p>
@@ -227,7 +223,7 @@ function packForm(){
   stops the bad link being rebuilt.</div>`:""}
   <div class="note" style="margin-top:14px"><b>Your legal basis:</b> ${L.named?`${esc(L.act)} — ${L.days}-day response deadline.`:
     `no comprehensive state privacy law is confirmed for ${st?esc(STATES[st]||st):"your state"} in this build, so your letters cite the brokers' California obligations and general opt-out rights. Many brokers apply deletion nationwide rather than run two systems — it is well worth sending.`}</div>
-  <button class="go wide" id="genPack">Generate my letters →</button></div>`;
+  <button class="go wide" id="genPack">${T.genBtn}</button></div>`;
 }
 
 /* generatePack() replaces #packout, which destroys the form it reads from. So the
@@ -261,16 +257,14 @@ function generatePack(){
   const today=new Date(); const L=lawFor(p.state);
   const due=addDays(today,L.days);
 
-  let h=`<div class="sec"><h2>Your removal pack — ${list.length} letters ready</h2>
+  let h=`<div class="sec"><h2>${T.h.ready(list.length)}</h2>
   <div class="stats">
-    <div class="stat"><div class="n">${list.length}</div><div class="l">deletion demands written</div></div>
-    <div class="stat"><div class="n">${humanHours(t.mid)}</div><div class="l">of manual work skipped (at ~15 min each)</div></div>
-    <div class="stat"><div class="n">${fmtDate(due)}</div><div class="l">their statutory deadline to respond</div></div>
-    <div class="stat"><div class="n">0</div><div class="l">bytes of your data sent anywhere</div></div>
+    <div class="stat"><div class="n">${list.length}</div><div class="l">${T.statLetters}</div></div>
+    <div class="stat"><div class="n">${humanHours(t.mid)}</div><div class="l">${T.statTime}</div></div>
+    <div class="stat"><div class="n">${fmtDate(due)}</div><div class="l">${T.statDue}</div></div>
+    <div class="stat"><div class="n">0</div><div class="l">${T.statZero}</div></div>
   </div>
-  <div class="note"><b>How to send them.</b> Fastest is <b>Copy all recipients</b> — paste that into the BCC field of one
-  email from your own address, then paste the letter body. One email, every broker, and every reply lands in your inbox.
-  If you'd rather send individually, each letter has its own button.</div>
+  <div class="note">${T.sendHow} If you'd rather send them individually, each letter has its own button.</div>
   <div style="margin-top:14px">
     <button class="copy" id="copyRcpt">Copy all ${list.length} recipients</button>
     <button class="copy" id="copyBody">Copy the letter</button>
@@ -282,7 +276,7 @@ function generatePack(){
   <pre class="doc" id="letterEx">${esc(requestBody(p,null))}</pre></div>`;
 
   /* per-broker table */
-  h+=`<div class="scroll" style="margin-top:18px"><table><thead><tr><th>Broker</th><th>Send</th><th>Denial rate</th><th>Flags</th></tr></thead><tbody>`;
+  h+=`<div class="scroll" style="margin-top:18px"><table><thead><tr><th>${T.colBroker}</th><th>${T.colSend}</th><th>${T.colDeny}</th><th>${T.colFlags}</th></tr></thead><tbody>`;
   list.forEach(b=>{
     const subj=encodeURIComponent(requestSubject(p,b));
     const body=encodeURIComponent(requestBody(p,b));
@@ -315,19 +309,19 @@ function generatePack(){
 
 function tiers(total,t){
   return `<div class="tiers" style="margin-top:18px">
-   <div class="tier"><h3>Free</h3><div class="price">$0</div><div class="per">what you just used</div>
+   <div class="tier"><h3>${T.tierFree}</h3><div class="price">$0</div><div class="per">what you just used</div>
     <ul><li>Full message analysis and supply-chain trace</li><li>Triage and the STOP rule</li>
     <li>Pre-written regulator complaint</li><li>${FREE_LIMIT} deletion letters</li>
     <li class="no">The other ${total-FREE_LIMIT} brokers</li><li class="no">Deadline tracker</li>
     <li class="no">Escalation letters</li><li class="no">Re-sweep reminders</li></ul></div>
-   <div class="tier pro"><h3>Full Removal Pack</h3><div class="price">${PRICE}</div><div class="per">one payment, no subscription</div>
+   <div class="tier pro"><h3>${T.tierPro}</h3><div class="price">${PRICE}</div><div class="per">one payment, no subscription</div>
     <ul><li><b>All ${total} registered brokers</b>, prioritised by who actually holds your data</li>
     <li>Escalation letters, pre-written for the day the deadline passes</li>
     <li>CSV tracker with every statutory deadline calculated</li>
     <li>Re-sweep pack — records reappear in 3–6 months</li>
     <li>FDCPA dispute letter if a collector is involved</li>
     <li>Everything still generated on your device</li></ul>
-    <button class="go wide" id="buyBtn">Get the full pack — ${PRICE}</button>
+    <button class="go wide" id="buyBtn">${T.buyBtn(PRICE)}</button>
     <div style="margin-top:10px;display:flex;gap:7px">
       <input type="text" id="codeIn" placeholder="Have a code?" style="flex:1;padding:9px;font-size:13.5px">
       <button class="ghost" id="codeBtn">Unlock</button></div>
@@ -351,7 +345,7 @@ function followUps(p,today){
 }
 
 function tipsBlock(){
-  return `<div class="sec"><h2>Things that actually work</h2><ul class="tips">
+  return `<div class="sec"><h2>${T.h.tips}</h2><ul class="tips">
   <li><b>Never reply to a scam text — not even STOP.</b> A reply confirms a live human. Confirmed numbers resell for
   more, which is why volume goes <i>up</i> after you answer. <span class="pill">biggest mistake</span></li>
   <li><b>Reply STOP to real marketing, immediately.</b> It's a per-se revocation, it starts a ten-business-day clock,
